@@ -17,11 +17,11 @@ export default function Home() {
           <div className="flex items-center justify-center gap-3">
             <Users className="w-8 h-8 md:w-10 md:h-10" />
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">
-              Contributions Citoyennes
+            Pouvoir Citoyen
             </h1>
           </div>
           <p className="text-center mt-3 text-white/90 text-sm md:text-base">
-            Partagez votre voix, contribuez au changement
+          Construisons ensemble le dialogue entre citoyens et gouvernants
           </p>
         </div>
       </header>
@@ -36,8 +36,8 @@ export default function Home() {
               </span>
             </div>
             <p className="text-gray-600 max-w-2xl mx-auto text-sm md:text-base leading-relaxed">
-              Enregistrez un message audio pour partager vos idées, suggestions ou témoignages.
-              Chaque contribution validée sera publiée sur cette page.
+            Un programme innovant de Polaris Association pour renforcer le dialogue
+            démocratique au Sénégal.
             </p>
           </section>
 
