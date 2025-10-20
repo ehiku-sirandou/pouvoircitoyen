@@ -1,8 +1,33 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, AudioContribution } from '../lib/supabase';
-import { LogOut, Check, X, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { LogOut, Check, X, Clock, Loader2, AlertCircle, Trash2, User, Phone } from 'lucide-react';
 import { useNavigate } from './router';
+
+// Liste des sujets disponibles
+const AVAILABLE_TOPICS = [
+  'Éducation',
+  'Santé',
+  'Emploi',
+  'Infrastructure',
+  'Sécurité',
+  'Justice',
+  'Économie',
+  'Environnement',
+  'Agriculture',
+  'Jeunesse',
+  'Transport',
+  'Logement',
+  'Culture',
+  'Sport',
+  'Gouvernance',
+  'Corruption',
+  'Droits humains',
+  'Femmes',
+  'Électricité',
+  'Eau',
+  'Autre'
+];
 
 export default function Backoffice() {
   const { user, signOut } = useAuth();
@@ -10,7 +35,8 @@ export default function Backoffice() {
   const [contributions, setContributions] = useState<AudioContribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [descriptions, setDescriptions] = useState<{ [key: string]: string }>({});
+  const [genders, setGenders] = useState<{ [key: string]: string }>({});
+  const [topics, setTopics] = useState<{ [key: string]: string[] }>({});
 
   useEffect(() => {
     if (!user) {
@@ -38,9 +64,16 @@ export default function Backoffice() {
   };
 
   const handleValidate = async (id: string) => {
-    const description = descriptions[id]?.trim();
-    if (!description) {
-      alert('Veuillez ajouter une description avant de valider');
+    const gender = genders[id];
+    const selectedTopics = topics[id] || [];
+
+    if (!gender) {
+      alert('Veuillez sélectionner le sexe avant de valider');
+      return;
+    }
+
+    if (selectedTopics.length === 0) {
+      alert('Veuillez sélectionner au moins un sujet avant de valider');
       return;
     }
 
@@ -50,7 +83,8 @@ export default function Backoffice() {
         .from('audio_contributions')
         .update({
           status: 'validated',
-          description: description,
+          gender: gender,
+          topics: selectedTopics,
           validated_at: new Date().toISOString(),
           validated_by: user?.email || 'admin',
         })
@@ -58,10 +92,15 @@ export default function Backoffice() {
 
       if (error) throw error;
       await fetchContributions();
-      setDescriptions(prev => {
-        const newDescriptions = { ...prev };
-        delete newDescriptions[id];
-        return newDescriptions;
+      setGenders(prev => {
+        const newGenders = { ...prev };
+        delete newGenders[id];
+        return newGenders;
+      });
+      setTopics(prev => {
+        const newTopics = { ...prev };
+        delete newTopics[id];
+        return newTopics;
       });
     } catch (error) {
       console.error('Error validating contribution:', error);
@@ -94,6 +133,49 @@ export default function Backoffice() {
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer définitivement cette contribution ? Cette action est irréversible.')) {
+      return;
+    }
+
+    setProcessingId(id);
+    try {
+      const { error } = await supabase
+        .from('audio_contributions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchContributions();
+    } catch (error) {
+      console.error('Error deleting contribution:', error);
+      alert('Erreur lors de la suppression');
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const toggleTopic = (contributionId: string, topic: string) => {
+    setTopics(prev => {
+      const currentTopics = prev[contributionId] || [];
+      const isSelected = currentTopics.includes(topic);
+      
+      if (isSelected) {
+        // Retirer le sujet
+        return {
+          ...prev,
+          [contributionId]: currentTopics.filter(t => t !== topic)
+        };
+      } else {
+        // Ajouter le sujet
+        return {
+          ...prev,
+          [contributionId]: [...currentTopics, topic]
+        };
+      }
+    });
   };
 
   const handleLogout = async () => {
@@ -225,18 +307,80 @@ export default function Backoffice() {
                       preload="metadata"
                     />
 
+                    {/* Informations utilisateur si disponibles */}
+                    {(contribution.full_name || contribution.phone_number) && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-xs font-semibold text-blue-800 mb-2">Informations de l'utilisateur</p>
+                        <div className="space-y-1">
+                          {contribution.full_name && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <User className="w-4 h-4 text-blue-600" />
+                              <span className="text-gray-700">{contribution.full_name}</span>
+                            </div>
+                          )}
+                          {contribution.phone_number && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="w-4 h-4 text-blue-600" />
+                              <span className="text-gray-700">{contribution.phone_number}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {contribution.status === 'pending' ? (
                       <div className="space-y-3">
-                        <textarea
-                          value={descriptions[contribution.id] || ''}
-                          onChange={(e) => setDescriptions(prev => ({
-                            ...prev,
-                            [contribution.id]: e.target.value
-                          }))}
-                          placeholder="Ajoutez une description de l'audio..."
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85c880] focus:border-transparent outline-none transition resize-none"
-                          rows={3}
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Sexe <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={genders[contribution.id] || ''}
+                              onChange={(e) => setGenders(prev => ({
+                                ...prev,
+                                [contribution.id]: e.target.value
+                              }))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85c880] focus:border-transparent outline-none transition"
+                            >
+                              <option value="">Sélectionnez...</option>
+                              <option value="homme">Homme</option>
+                              <option value="femme">Femme</option>
+                            </select>
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Sujets (sélectionnez un ou plusieurs) <span className="text-red-500">*</span>
+                            </label>
+                            <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
+                              <div className="flex flex-wrap gap-2">
+                                {AVAILABLE_TOPICS.map((topic) => {
+                                  const isSelected = (topics[contribution.id] || []).includes(topic);
+                                  return (
+                                    <button
+                                      key={topic}
+                                      type="button"
+                                      onClick={() => toggleTopic(contribution.id, topic)}
+                                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                        isSelected
+                                          ? 'bg-[#85c880] text-white shadow-md'
+                                          : 'bg-white text-gray-700 border border-gray-300 hover:border-[#85c880]'
+                                      }`}
+                                    >
+                                      {topic}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            {topics[contribution.id] && topics[contribution.id].length > 0 && (
+                              <p className="text-xs text-gray-600 mt-2">
+                                {topics[contribution.id].length} sujet(s) sélectionné(s)
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
                         <div className="flex gap-3">
                           <button
@@ -266,17 +410,53 @@ export default function Backoffice() {
                       </div>
                     ) : (
                       <>
-                        {contribution.description && (
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-sm font-medium text-gray-700 mb-1">Description:</p>
-                            <p className="text-gray-600">{contribution.description}</p>
+                        {/* Métadonnées validées */}
+                        {contribution.status === 'validated' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {contribution.gender && (
+                              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                                <p className="text-xs font-semibold text-purple-800 mb-1">Sexe</p>
+                                <p className="text-sm text-gray-700 capitalize">{contribution.gender.replace('_', ' ')}</p>
+                              </div>
+                            )}
+                            
+                            {contribution.topics && contribution.topics.length > 0 && (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                <p className="text-xs font-semibold text-green-800 mb-1">Sujets</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {contribution.topics.map((topic, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full"
+                                    >
+                                      {topic}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
-                        {contribution.validated_by && (
-                          <p className="text-xs text-gray-500">
-                            Traitée par: {contribution.validated_by}
-                          </p>
-                        )}
+                        
+                        <div className="flex items-center justify-between">
+                          {contribution.validated_by && (
+                            <p className="text-xs text-gray-500">
+                              Traitée par: {contribution.validated_by}
+                            </p>
+                          )}
+                          
+                          {/* Bouton de suppression pour les contributions validées */}
+                          {contribution.status === 'validated' && (
+                            <button
+                              onClick={() => handleDelete(contribution.id)}
+                              disabled={processingId === contribution.id}
+                              className="flex items-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Supprimer
+                            </button>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>

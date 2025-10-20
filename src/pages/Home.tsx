@@ -1,14 +1,54 @@
-import { useState } from 'react';
-import { Users, Mic2, TrendingUp, Play, Volume2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Users, Mic2, TrendingUp, Volume2, VolumeX, Pause } from 'lucide-react';
 import AudioRecorder from '../components/AudioRecorder';
 import ValidatedContributions from '../components/ValidatedContributions';
 
 export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showVideo, setShowVideo] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const handleRecordingSuccess = () => {
     setRefreshKey(prev => prev + 1);
+  };
+
+  const handleRecordingStart = () => {
+    // Mettre l'audio d'Omar Africa en pause quand on commence à enregistrer
+    if (audioRef.current && isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  // Auto-play audio au chargement
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch((error) => {
+        console.log('Autoplay prevented:', error);
+      });
+    }
+  }, []);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
   };
 
   return (
@@ -67,63 +107,89 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-4 -mt-8 md:-mt-12 relative z-20">
-        <div className="max-w-6xl mx-auto space-y-8 md:space-y-12">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
           
-          {/* Section Vidéo + Enregistreur côte à côte */}
-          <div className="grid lg:grid-cols-2 gap-6 md:gap-8">
-            
-            {/* Vidéo Omar Africa */}
-            <div className="bg-gradient-to-br from-[#27103E] to-[#4a1e66] rounded-3xl shadow-2xl overflow-hidden">
-              <div className="p-6 md:p-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ffa921] to-[#fc5902] flex items-center justify-center">
-                    <Users className="w-6 h-6 text-white" />
+          {/* Message Audio Omar Africa - Animé */}
+          <div className="relative bg-gradient-to-br from-[#27103E] to-[#4a1e66] rounded-2xl shadow-xl overflow-hidden">
+            {/* Audio caché */}
+            <audio
+              ref={audioRef}
+              src="https://qfjhnlmqcuksqlggdtfw.supabase.co/storage/v1/object/public/public-assets/omar-africa-message.wav"
+              onEnded={() => setIsPlaying(false)}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+            />
+
+            <div className="p-4 md:p-6">
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                {/* Avatar avec animation de son */}
+                <div className="relative flex-shrink-0">
+                  <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#ffa921] to-[#fc5902] flex items-center justify-center ${isPlaying ? 'animate-pulse' : ''}`}>
+                    <Users className="w-8 h-8 md:w-10 md:h-10 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-white font-bold text-lg">Omar Africa</h3>
-                    <p className="text-white/70 text-sm">Influenceur & Activiste</p>
-                  </div>
-                </div>
-                
-                <div className="relative aspect-video bg-black/20 rounded-xl overflow-hidden group cursor-pointer mb-4"
-                     onClick={() => setShowVideo(!showVideo)}>
-                  {!showVideo ? (
+                  {/* Ondes sonores animées */}
+                  {isPlaying && (
                     <>
-                      <img 
-                        src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800&h=450&fit=crop" 
-                        alt="Omar Africa"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-center justify-center">
-                        <button className="w-16 h-16 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl">
-                          <Play className="w-8 h-8 text-[#ffa921] ml-1" fill="currentColor" />
-                        </button>
-                      </div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <p className="text-white font-semibold text-sm md:text-base">
-                          Pourquoi ta voix est importante 🔥
-                        </p>
-                      </div>
+                      <div className="absolute inset-0 rounded-full border-4 border-[#ffa921] animate-ping opacity-30"></div>
+                      <div className="absolute inset-0 rounded-full border-4 border-[#ffa921] animate-ping opacity-20 animation-delay-200"></div>
                     </>
-                  ) : (
-                    <iframe
-                      className="w-full h-full"
-                      src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                      title="Omar Africa"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    ></iframe>
                   )}
                 </div>
 
-                <p className="text-white/80 text-sm leading-relaxed">
-                  "Chaque jeune a le pouvoir de changer les choses. Ta voix, tes idées, ton témoignage peuvent faire la différence. N'attends pas, exprime-toi maintenant !" 💪
-                </p>
-              </div>
-            </div>
+                {/* Info et message */}
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-white font-bold text-lg md:text-xl mb-1">Omar Africa</h3>
+                  <p className="text-white/70 text-sm mb-2">Message audio • Influenceur & Activiste</p>
+                  <p className="text-white/90 text-sm md:text-base leading-relaxed">
+                    {isPlaying ? '🎵 En lecture...' : '👆 Clique pour écouter mon message !'}
+                  </p>
+                </div>
 
-            {/* Enregistreur Audio Amélioré */}
-            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-[#ffa921]/20">
+                {/* Contrôles audio */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={togglePlay}
+                    className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 transition-all flex items-center justify-center group"
+                  >
+                    {isPlaying ? (
+                      <Pause className="w-5 h-5 md:w-6 md:h-6 text-white" fill="currentColor" />
+                    ) : (
+                      <div className="w-0 h-0 border-l-[8px] md:border-l-[10px] border-l-white border-y-[6px] md:border-y-[8px] border-y-transparent ml-1"></div>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={toggleMute}
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all flex items-center justify-center"
+                  >
+                    {isMuted ? (
+                      <VolumeX className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                    ) : (
+                      <Volume2 className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Barre de progression visuelle */}
+              {isPlaying && (
+                <div className="mt-4 flex items-center justify-center gap-1">
+                  <div className="audio-wave bg-white/60"></div>
+                  <div className="audio-wave bg-white/70"></div>
+                  <div className="audio-wave bg-white/80"></div>
+                  <div className="audio-wave bg-white/90"></div>
+                  <div className="audio-wave bg-white"></div>
+                  <div className="audio-wave bg-white/90"></div>
+                  <div className="audio-wave bg-white/80"></div>
+                  <div className="audio-wave bg-white/70"></div>
+                  <div className="audio-wave bg-white/60"></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Enregistreur Audio - Centré et mis en avant */}
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-4 border-[#ffa921]/20">
               <div className="bg-gradient-to-r from-[#85c880] to-[#4ec6e0] p-4 md:p-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -137,7 +203,10 @@ export default function Home() {
               </div>
               
               <div className="p-6 md:p-8">
-                <AudioRecorder onSuccess={handleRecordingSuccess} />
+                <AudioRecorder 
+                  onSuccess={handleRecordingSuccess} 
+                  onRecordingStart={handleRecordingStart}
+                />
               </div>
 
               {/* Encouragements */}
@@ -152,7 +221,6 @@ export default function Home() {
                 </div>
               </div>
             </div>
-          </div>
 
           {/* Séparateur Stylé */}
           <div className="relative py-8">
@@ -195,3 +263,4 @@ export default function Home() {
     </div>
   );
 }
+

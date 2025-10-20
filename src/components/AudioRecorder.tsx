@@ -1,17 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Upload, Loader2, Trash2, Send } from 'lucide-react';
+import { Mic, Square, Loader2, Trash2, Send } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AudioRecorderProps {
   onSuccess: () => void;
+  onRecordingStart?: () => void;
 }
 
-export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
+export default function AudioRecorder({ onSuccess, onRecordingStart }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [duration, setDuration] = useState(0);
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
@@ -56,6 +59,11 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
       mediaRecorder.start();
       setIsRecording(true);
       setDuration(0);
+
+      // Appeler le callback pour mettre l'audio en pause
+      if (onRecordingStart) {
+        onRecordingStart();
+      }
 
       timerRef.current = window.setInterval(() => {
         setDuration(prev => {
@@ -134,6 +142,8 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
           status: 'pending',
           duration: duration,
           file_size: audioBlob.size,
+          full_name: fullName.trim() || null,
+          phone_number: phoneNumber.trim() || null,
         });
 
       if (dbError) throw dbError;
@@ -141,6 +151,8 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
       setAudioBlob(null);
       setAudioUrl(null);
       setDuration(0);
+      setFullName('');
+      setPhoneNumber('');
       onSuccess();
     } catch (error) {
       console.error('Error uploading audio:', error);
@@ -163,6 +175,8 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
     setAudioBlob(null);
     setAudioUrl(null);
     setDuration(0);
+    setFullName('');
+    setPhoneNumber('');
   };
 
   return (
@@ -251,7 +265,7 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
                 
                 <audio controls src={audioUrl} className="w-full mb-3 sm:mb-4" />
                 
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600">
                     <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
                     <span>Fichier audio</span>
@@ -259,6 +273,37 @@ export default function AudioRecorder({ onSuccess }: AudioRecorderProps) {
                   <span className="text-xs text-gray-500">
                     {Math.round((audioBlob?.size || 0) / 1024)} KB
                   </span>
+                </div>
+
+                {/* Champs optionnels */}
+                <div className="space-y-3 mb-4">
+                  <div>
+                    <label htmlFor="fullName" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Nom complet (optionnel)
+                    </label>
+                    <input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Votre nom complet"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85c880] focus:border-transparent outline-none transition"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="phoneNumber" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                      Numéro de téléphone (optionnel)
+                    </label>
+                    <input
+                      id="phoneNumber"
+                      type="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="+221 XX XXX XX XX"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#85c880] focus:border-transparent outline-none transition"
+                    />
+                  </div>
                 </div>
               </div>
 

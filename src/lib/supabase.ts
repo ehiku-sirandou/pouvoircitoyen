@@ -15,4 +15,8 @@ export interface AudioContribution {
   validated_by: string | null;
   duration: number | null;
   file_size: number | null;
+  full_name: string | null;
+  phone_number: string | null;
+  gender: 'homme' | 'femme' | null;
+  topics: string[] | null;
 }
